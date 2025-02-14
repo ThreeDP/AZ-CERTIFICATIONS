@@ -104,5 +104,126 @@ os ClaimTypes são responsáveis por declarar, validar, e manipular a visualiza�
     > }
     > ```
 3. [Predicates](https://learn.microsoft.com/en-us/azure/active-directory-b2c/predicates)
+    É a definição de uma regra de validação para campos ClaymType, seria uma "função" que valida uma regra especifica.
+
+    Essa seria a definição das "funções" e das valiidações:
+    ```xml
+    <Predicates>
+        <Predicate Id="IsLengthBetween8And64" Method="IsLengthRange" HelpText="The password must be between 8 and 64 characters.">
+            <Parameters>
+                <Parameter Id="Minimum">8</Parameter>
+                <Parameter Id="Maximum">64</Parameter>
+            </Parameters>
+        </Predicate>
+
+        <Predicate Id="Lowercase" Method="IncludesCharacters" HelpText="a lowercase letter">
+            <Parameters>
+                <Parameter Id="CharacterSet">a-z</Parameter>
+            </Parameters>
+        </Predicate>
+
+        <Predicate Id="DisallowedWhitespace" Method="MatchesRegex" HelpText="The password must not begin or end with a whitespace character.">
+            <Parameters>
+                <Parameter Id="RegularExpression">(^\S.*\S$)|(^\S+$)|(^$)</Parameter>
+            </Parameters>
+        </Predicate>
+    </Predicates>
+    ```
    
 4. [PredicateValidations](https://learn.microsoft.com/en-us/azure/active-directory-b2c/predicates#predicatevalidations)
+   É como um middleware que agrupa as validações predicate.
+
+   No Exemplo abaixo temos a definição de dois validatores.
+    O `StrongPassword` define uma serie de chamadas encadeadas a predicates declarados.
+   ```xml
+     <PredicateValidation Id="StrongPassword">
+        <PredicateGroups>
+            <PredicateGroup Id="DisallowedWhitespaceGroup">
+                <PredicateReferences>
+                    <PredicateReference Id="DisallowedWhitespace" />
+                </PredicateReferences>
+            </PredicateGroup>
+            <PredicateGroup Id="AllowedAADCharactersGroup">
+                <PredicateReferences>
+                    <PredicateReference Id="AllowedAADCharacters" />
+                </PredicateReferences>
+            </PredicateGroup>
+            <PredicateGroup Id="LengthGroup">
+                <PredicateReferences>
+                    <PredicateReference Id="IsLengthBetween8And64" />
+                </PredicateReferences>
+            </PredicateGroup>
+            <PredicateGroup Id="CharacterClasses">
+                <UserHelpText>The password must have at least 3 of the following:</UserHelpText>
+                <PredicateReferences MatchAtLeast="3">
+                    <PredicateReference Id="Lowercase" />
+                    <PredicateReference Id="Uppercase" />
+                    <PredicateReference Id="Number" />
+                    <PredicateReference Id="Symbol" />
+                </PredicateReferences>
+            </PredicateGroup>
+        </PredicateGroups>
+    </PredicateValidation>
+
+    <PredicateValidation Id="CustomPassword">
+        <PredicateGroups>
+            <PredicateGroup Id="DisallowedWhitespaceGroup">
+                <PredicateReferences>
+                    <PredicateReference Id="DisallowedWhitespace" />
+                </PredicateReferences>
+            </PredicateGroup>
+            <PredicateGroup Id="AllowedAADCharactersGroup">
+                <PredicateReferences>
+                    <PredicateReference Id="AllowedAADCharacters" />
+                </PredicateReferences>
+            </PredicateGroup>
+        </PredicateGroups>
+    </PredicateValidation>
+   ```
+
+    **Exemplo de aplicação de um PredicateValidation em um ClaymType**
+    ```xml
+    <ClaimType Id="password">
+        <DisplayName>Password</DisplayName>
+        <DataType>string</DataType>
+        <AdminHelpText>Enter password</AdminHelpText>
+        <UserHelpText>Enter password</UserHelpText>
+        <UserInputType>Password</UserInputType>
+        <!-- Aqui vemos a definicação de uma validação StrongPassword -->
+        <PredicateValidationReference Id="StrongPassword" />
+    </ClaimType>
+    ```
+
+5. [ContentDefinitions](https://learn.microsoft.com/en-us/azure/active-directory-b2c/contentdefinitions#contentdefinition)
+    Define estilos personalizados que poder ser utilizados para estilizar technical profile.
+
+    É como a declaração de estruturas html que pode ser utilizadas para alterar como é exibidos partes do B2C.
+    Por Exemplo se definirmos `api.localaccountsignup` podemos usar em um technical profile.
+    ````xml
+    <ContentDefinition Id="api.localaccountsignup">
+        <LoadUri>~/tenant/default/selfAsserted.cshtml</LoadUri>
+        <RecoveryUri>~/common/default_page_error.html</RecoveryUri>
+        <DataUri>urn:com:microsoft:aad:b2c:elements:selfasserted:1.1.0</DataUri>
+        <Metadata>
+            <Item Key="DisplayName">Local account sign up page</Item>
+        </Metadata>
+        <LocalizedResourcesReferences MergeBehavior="Prepend">
+            <LocalizedResourcesReference Language="en" LocalizedResourcesReferenceId="api.localaccountsignup.en" />
+            <LocalizedResourcesReference Language="es" LocalizedResourcesReferenceId="api.localaccountsignup.es" />
+            ...
+    ```
+
+    Technical profile example:
+    ```xml
+    <TechnicalProfile Id="LocalAccountSignUpWithLogonEmail">
+        <DisplayName>Email signup</DisplayName>
+        <Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.SelfAssertedAttributeProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+        <Metadata>
+            <!-- Definição do ContentDefinition -->
+            <Item Key="ContentDefinitionReferenceId">api.localaccountsignup</Item>
+            ...
+        </Metadata>
+        ...
+    ```
+6. [Localization](https://learn.microsoft.com/en-us/azure/active-directory-b2c/localization)
+7. [Display Controls](https://learn.microsoft.com/en-us/azure/active-directory-b2c/display-controls)
